@@ -149,14 +149,122 @@ In order to connect to mongo db from other VSI, you need to provide a user and p
 
 Follow the steps from this link: https://ianlondon.github.io/blog/mongodb-auth/
  
+1. SSH to server VSI:   
 
+2. Run the below commands:   
 
+root@schematics-demo-vsi-server:~# **sudo service mongod restart**    
+root@schematics-demo-vsi-server:~# **sudo service status mongod **   
+```
+You should get the below:
+status: unrecognized service
+root@schematics-demo-vsi-server:~# sudo systemctl status mongod   
+● mongod.service - MongoDB Database Server    
+   Loaded: loaded (/lib/systemd/system/mongod.service; enabled; vendor preset: enabled)   
+   Active: active (running) since Mon 2020-08-31 05:23:00 UTC; 53s ago  
+     Docs: https://docs.mongodb.org/manual  
+ Main PID: 13420 (mongod)   
+   CGroup: /system.slice/mongod.service  
+           └─13420 /usr/bin/mongod --config /etc/mongod.conf   
+
+Aug 31 05:23:00 schematics-demo-vsi-server systemd[1]: Started MongoDB Database Server.
+```
+
+3. Connect to mongo db client. Enter the mongo shell by typing mongo.  
+
+root@schematics-demo-vsi-server:~# mongo 
+
+a) Set up your user   
+
+First ssh into your server and enter the mongo shell by typing mongo. For this example, I will set up a user named xxx and give that user read & write access to the user_db database.      
+```
+use user_db     
+ 
+db.createUser({
+    user: 'dbuser',
+    pwd: 'dbpassword',
+    roles: [{ role: 'readWrite', db:'user_db'}]
+})
+```
+   
+b) Enable auth and open MongoDB access up to all IPs   
+   
+Edit your MongoDB config file. On Ubuntu:   
+   
+sudo vim /etc/mongod.conf   
+   
+Look for the net line and comment out the bindIp line under it, which is currently limiting MongoDB connections to localhost:   
+   
+**Warning:** do not comment out the bindIp line without enabling authorization. Otherwise you will be opening up the whole internet to have full admin access to all mongo databases on your MongoDB server!   
+
+```
+# network interfaces   
+
+net:   
+  port: 27017  
+#  bindIp: 127.0.0.1  <- comment out this line
+```
+
+Scroll down to the #security: section and add the following line. Make sure to un-comment the security: line.   
+
+```
+security:  
+  authorization: 'enabled'  
+```
+
+c) Last step: restart mongo daemon (mongod)  
+  
+> sudo service mongod restart  
+
+If you get the below error:   
+```
+root@schematics-demo-vsi-server:~# sudo systemctl status mongod
+● mongod.service - MongoDB Database Server
+   Loaded: loaded (/lib/systemd/system/mongod.service; enabled; vendor preset: enabled)
+   Active: failed (Result: exit-code) since Mon 2020-08-31 05:25:34 UTC; 7s ago
+     Docs: https://docs.mongodb.org/manual
+  Process: 13789 ExecStart=/usr/bin/mongod --config /etc/mongod.conf (code=exited, status=14)
+ Main PID: 13789 (code=exited, status=14)
+
+Aug 31 05:25:34 schematics-demo-vsi-server systemd[1]: Started MongoDB Database Server.
+```
+Then run the 2 commands and restart mongodb service: 
+
+```
+root@schematics-demo-vsi-server:~# chown mongodb:mongodb /tmp/mongodb-27017.sock
+root@schematics-demo-vsi-server:~# chown -R mongodb:mongodb /var/lib/mongodb
+root@schematics-demo-vsi-server:~# sudo service mongod stop
+root@schematics-demo-vsi-server:~# sudo service mongod start
+root@schematics-demo-vsi-server:~# sudo systemctl status mongod
+● mongod.service - MongoDB Database Server
+   Loaded: loaded (/lib/systemd/system/mongod.service; enabled; vendor preset: enabled)
+   Active: active (running) since Mon 2020-08-31 05:34:35 UTC; 5s ago
+     Docs: https://docs.mongodb.org/manual
+ Main PID: 14667 (mongod)
+   CGroup: /system.slice/mongod.service
+           └─14667 /usr/bin/mongod --config /etc/mongod.conf
+```
+
+Now, try to connect to mongodb using the created user, pass and using pdns name. It should be successful.   
+
+```
+root@schematics-demo-vsi-server:~# mongo -u malar -p malar malara.testmalar.com/user_db   
+MongoDB shell version v4.4.0   
+connecting to: mongodb://malara.testmalar.com:27017/user_db?compressors=disabled&gssapiServiceName=mongodb   
+Implicit session: session { "id" : UUID("ce35f185-85ef-4d8b-9a7c-03fc995e4e64") }   
+MongoDB server version: 4.4.0   
+> exit   
+```
 
 Also, ensure that port 27017 is open in sever VSI in cloud.ibm.com:
 
-Open port 27017 on your EC2 instance  
+Open port 27017 on your Server VSI. 
 
-    Go to your EC2 dashboard: https://console.aws.amazon.com/ec2/   
-    Go to Instances and scroll down to see your instance’s Security Groups. Eg, it will be something like launch-wizard-4  
-    Go to Netword & Security -> Security Groups -> Inbound tab -> Edit button.  
+    Go to your VPC Gen2 : https://cloud.ibm.com/vpc-ext
+    Go to VPC. Select your VPC.  Click on the Security Group. 
+    Add a security group rule.   
     Make a new Custom TCP on port 27017, Source: Anywhere, 0.0.0.0/0   
+    
+ Now, we are in the final step. Lets connect to Client VSI and access the Mongo db:
+
+   
