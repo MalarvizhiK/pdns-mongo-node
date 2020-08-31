@@ -33,15 +33,16 @@ apt-get update
 apt-get upgrade   
 
 2. Create the file /etc/netplan/99-custom-dns.yaml with the following content:  
-
+```
 network:   
     version: 2   
     ethernets:  
         ens3:  
             nameservers:  
                 addresses: [ "161.26.0.7", "161.26.0.8" ]   
-            
-            **NOTE:**  dhcp4-overrides will not work in ubuntu 18.04, hence removed the line. 
+```
+
+> **NOTE:**  dhcp4-overrides will not work in ubuntu 18.04, hence removed the line. 
             
  3. Apply the changes to netplan: 
 
