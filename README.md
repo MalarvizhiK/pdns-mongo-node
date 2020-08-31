@@ -60,16 +60,103 @@ If you are still unable to resolve with the new configuration, flush all DNS res
 
 systemd-resolve --flush-caches   
 
-6. 
+The above steps needs to be performed in both Server and Client VSI. Restart Server and Client VSI by Stopping and Starting VSI in cloud.ibm.com.  
 
+1. SSH to Server VSI :
 
+ssh root@<floating IP> 
+      
+2. ping malara.testmalar.com : You should be able to ping using pdns name. You should get response from private ip address of VSI Server.   
+
+root@schematics-demo-vsi-server:~# ping malara.testmalar.com  
+PING malara.testmalar.com (10.240.0.5) 56(84) bytes of data.  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=1 ttl=64 time=0.015 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=2 ttl=64 time=0.060 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=3 ttl=64 time=0.037 ms    
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=4 ttl=64 time=0.050 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=5 ttl=64 time=0.035 ms  
+^C      
+
+Similarly, try the pdns name in Client VSI:   
+
+1. SSH to Client VSI :  
+  
+ssh root@<floating IP>   
+      
+2. ping malara.testmalar.com : You should be able to ping using pdns name. You should get response from private ip address of VSI Server.      
+
+root@schematics-demo-vsi-server:~# ping malara.testmalar.com  
+PING malara.testmalar.com (10.240.0.5) 56(84) bytes of data.  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=1 ttl=64 time=0.015 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=2 ttl=64 time=0.060 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=3 ttl=64 time=0.037 ms    
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=4 ttl=64 time=0.050 ms  
+64 bytes from schematics-demo-vsi-server (10.240.0.5): icmp_seq=5 ttl=64 time=0.035 ms  
+^C      
+
+Now, lets install Mongodb in Server VSI. 
+
+1. SSH to Server VSI :  
+  
+ssh root@<floating IP>  
+
+2. Install Mongo db by following the steps below:  
 
 ** Mongo db installation:  **
 
-https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/   
-
-https://ianlondon.github.io/blog/mongodb-auth/  
-
+Follow this link https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/   
+Section: **Install MongoDB Community Edition**       
 
 
+1. Import the public key used by the package management system.  
 
+From a terminal, issue the following command to import the MongoDB public GPG Key from https://www.mongodb.org/static/pgp/server-4.4.asc:   
+
+> wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | sudo apt-key add -  
+
+2. The operation should respond with an OK.   
+
+However, if you receive an error indicating that gnupg is not installed, you can:   
+
+    Install gnupg and its required libraries using the following command:   
+    
+    sudo apt-get install gnupg 
+    
+ 3. Once installed, retry importing the key:   
+ 
+ wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | sudo apt-key add -   
+ 
+ 4. Create a list file for MongoDB: 
+
+Create the list file /etc/apt/sources.list.d/mongodb-org-4.4.list for your version of Ubuntu by running the below command.
+
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.4.list  
+
+5. Reload local package database.   
+
+Issue the following command to reload the local package database:  
+
+sudo apt-get update  
+
+6. Install the MongoDB packages.   
+
+ sudo apt-get install -y mongodb-org 
+ 
+ Now, Mongo db is installed. 
+
+
+In order to connect to mongo db from other VSI, you need to provide a user and password and open the port 27017. 
+
+Follow the steps from this link: https://ianlondon.github.io/blog/mongodb-auth/
+ 
+
+
+
+Also, ensure that port 27017 is open in sever VSI in cloud.ibm.com:
+
+Open port 27017 on your EC2 instance  
+
+    Go to your EC2 dashboard: https://console.aws.amazon.com/ec2/   
+    Go to Instances and scroll down to see your instance’s Security Groups. Eg, it will be something like launch-wizard-4  
+    Go to Netword & Security -> Security Groups -> Inbound tab -> Edit button.  
+    Make a new Custom TCP on port 27017, Source: Anywhere, 0.0.0.0/0   
